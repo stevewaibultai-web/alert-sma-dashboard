@@ -78,11 +78,10 @@
     }
 
     // === Indicator Logic ===
-    async function checkSMAAlerts(i, symbol, tf="1m") {
+    async function checkIndicatorLogic(i, symbol, tf="1m") {
       let closes = await fetchCandles(symbol, tf);
       if(closes.length < 900) return;
 
-      let sma5   = SMA(closes, 5);    // Short line
       let sma60  = SMA(closes, 60);   // Blue line
       let sma180 = SMA(closes, 180);  // Orange line
       let sma900 = SMA(closes, 900);  // Purple line
@@ -152,4 +151,6 @@
     }
 
     function loadSettings(i) {
-      let data
+      let data = localStorage.getItem(`row${i}`);
+      if(data) {
+        let {sym, ind, tf} = JSON.parse
