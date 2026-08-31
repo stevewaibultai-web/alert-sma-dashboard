@@ -142,15 +142,13 @@
       }
     }
 
-    // LocalStorage save/load
-    function saveSettings(i) {
-      let sym = document.getElementById(`sym${i}`).value;
-      let ind = document.getElementById(`ind${i}`).value;
-      let tf  = document.getElementById(`tf${i}`).value;
-      localStorage.setItem(`row${i}`, JSON.stringify({sym, ind, tf}));
-    }
-
-    function loadSettings(i) {
-      let data = localStorage.getItem(`row${i}`);
-      if(data) {
-        let {sym, ind, tf} = JSON.parse
+     // Load saved settings on page load
+    window.onload = () => {
+      symbols.forEach((s, i) => {
+        loadSettings(i);
+        initRow(i);
+      });
+    };
+  </script>
+</body>
+</html>
