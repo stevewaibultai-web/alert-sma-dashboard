@@ -16,7 +16,11 @@
       <th>Alert</th>
     </tr>
     <script>
-      const symbols = ["NILUSDT","TUTUSDT","STXUSDT","COOKIEUSDT","TSTUSDT","THEUSDT","XAIUSDT","BANANAS31USDT","COTIUSDT","BANDUSDT","ACEUSDT","STXUSDT","ADAUSDT","FFUSDT","DOGEUSDT","MATICUSDT"];
+      const symbols = [
+        "NILUSDT","TUTUSDT","STXUSDT","COOKIEUSDT","TSTUSDT","THEUSDT","XAIUSDT",
+        "BANANAS31USDT","COTIUSDT","BANDUSDT","ACEUSDT","STXUSDT","ADAUSDT",
+        "FFUSDT","DOGEUSDT","MATICUSDT"
+      ];
       symbols.forEach((sym, i) => {
         document.write(`
           <tr>
@@ -26,7 +30,7 @@
               <option>SMA Alerts</option>
             </select></td>
             <td><select id="tf${i}" onchange="saveSettings(${i}); initRow(${i})">
-              <option>1m</option><option>3m</option><option>5m</option><option>15m</option><option>30m</option><option>1h</option><option>4h</option>
+              <option>1m</option><option>3m</option><option>5m</option><option>15m</option>
             </select></td>
             <td id="price${i}" style="color:#0ecb81;">Loading...</td>
             <td><button onclick="sendTelegramAlert(${i}, 'Manual Alert')">Send Alert</button></td>
@@ -47,7 +51,8 @@
       let timeframe = document.getElementById(`tf${i}`).value;
       let now = new Date();
       let timeStr = now.toLocaleTimeString("en-IN", { hour12: false });
-      let fullMsg = `${msg}: ${sym} | TF: ${timeframe} | Candle Close: ${timeStr}`;
+      // trade2 prefix যোগ করা হলো
+      let fullMsg = `trade2 | ${msg}: ${sym} | TF: ${timeframe} | Candle Close: ${timeStr}`;
       fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(fullMsg)}`)
         .then(res => res.json())
         .then(data => { document.getElementById("status").innerText = "Message sent ✅"; })
@@ -97,16 +102,17 @@
 
     async function checkSMAAlerts(i, symbol, tf="1m") {
       let closes = await fetchCandles(symbol, tf);
-      if(closes.length < 900) return;
-      let blue = SMA(closes, 15), orange = SMA(closes, 180), purple = SMA(closes, 900);
-      let lastBlue = blue[blue.length-1], prevBlue = blue[blue.length-2];
-      let lastOrange = orange[orange.length-1], prevOrange = orange[orange.length-2];
-      let lastPurple = purple[purple.length-1], prevPurple = purple[purple.length-2];
-      if((prevBlue < prevOrange && lastBlue > lastOrange) || (prevBlue > prevOrange && lastBlue < lastOrange)) {
-        sendTelegramAlert(i, "Confirmation Alert | Blue crossed Orange");
+      if(closes.length < 20) return; // ছোট ডেটা টেস্টের জন্য
+      let sma5  = SMA(closes, 5);
+      let sma15 = SMA(closes, 15);
+      let last5 = sma5[sma5.length-1], prev5 = sma5[sma5.length-2];
+      let last15 = sma15[sma15.length-1], prev15 = sma15[sma15.length-2];
+
+      if(prev5 < prev15 && last5 > last15) {
+        sendTelegramAlert(i, "SMA Bullish Crossover (5 vs 15)");
       }
-      if((prevOrange < prevPurple && lastOrange > lastPurple) || (prevOrange > prevPurple && lastOrange < lastPurple)) {
-        sendTelegramAlert(i, "Long Trend Alert | Orange crossed Purple");
+      else if(prev5 > prev15 && last5 < last15) {
+        sendTelegramAlert(i, "SMA Bearish Crossover (5 vs 15)");
       }
     }
 
