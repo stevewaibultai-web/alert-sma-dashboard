@@ -136,6 +136,7 @@
       }
     }
 
+    // LocalStorage save/load
     function saveSettings(i) {
       let sym = document.getElementById(`sym${i}`).value;
       let ind = document.getElementById(`ind${i}`).value;
@@ -156,4 +157,23 @@
     let intervals = {};
     function initRow(i) {
       if(intervals[i]) clearInterval(intervals[i]);
-      let sym = document.getElementById(`sym${i}`).value.toUpperCase().
+      let sym = document.getElementById(`sym${i}`).value.toUpperCase().trim();
+      let tf = document.getElementById(`tf${i}`).value;
+      let ind = document.getElementById(`ind${i}`).value;
+      intervals[i] = setInterval(() => {
+        fetchCrypto(i, sym, tf);
+        if(ind === "MACD") checkMACD(i, sym, tf);
+        else if(ind === "SMA Alerts") checkSMAAlerts(i, sym, tf);
+      }, 10000);
+    }
+
+    // Load saved settings on page load
+    window.onload = () => {
+      symbols.forEach((s, i) => {
+        loadSettings(i);
+        initRow(i);
+      });
+    };
+  </script>
+</body>
+</html>
