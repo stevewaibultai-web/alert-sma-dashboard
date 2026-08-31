@@ -51,7 +51,6 @@
       let timeframe = document.getElementById(`tf${i}`).value;
       let now = new Date();
       let timeStr = now.toLocaleTimeString("en-IN", { hour12: false });
-      // trade2 prefix যোগ করা হলো
       let fullMsg = `trade2 | ${msg}: ${sym} | TF: ${timeframe} | Candle Close: ${timeStr}`;
       fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(fullMsg)}`)
         .then(res => res.json())
@@ -60,18 +59,9 @@
     }
 
     async function fetchCandles(symbol, tf="1m") {
-      const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=200`);
+      const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=1000`);
       const data = await res.json();
       return data.map(c => parseFloat(c[4]));
-    }
-
-    function EMA(values, period) {
-      let k = 2/(period+1), emaArray = [];
-      emaArray[0] = values[0];
-      for(let i=1;i<values.length;i++){
-        emaArray[i] = values[i]*k + emaArray[i-1]*(1-k);
-      }
-      return emaArray;
     }
 
     function SMA(values, period) {
@@ -87,6 +77,47 @@
       return result;
     }
 
+    // === Indicator Logic ===
+    async function checkSMAAlerts(i, symbol, tf="1m") {
+      let closes = await fetchCandles(symbol, tf);
+      if(closes.length < 900) return;
+
+      let sma5   = SMA(closes, 5);    // Short line
+      let sma60  = SMA(closes, 60);   // Blue line
+      let sma180 = SMA(closes, 180);  // Orange line
+      let sma900 = SMA(closes, 900);  // Purple line
+
+      let last60 = sma60[sma60.length-1], prev60 = sma60[sma60.length-2];
+      let last180 = sma180[sma180.length-1], prev180 = sma180[sma180.length-2];
+      let last900 = sma900[sma900.length-1], prev900 = sma900[sma900.length-2];
+
+      // 60 vs 180 crossover
+      if(prev60 < prev180 && last60 > last180) sendTelegramAlert(i, "SMA Bullish Crossover (60 vs 180)");
+      else if(prev60 > prev180 && last60 < last180) sendTelegramAlert(i, "SMA Bearish Crossover (60 vs 180)");
+
+      // 180 vs 900 crossover
+      if(prev180 < prev900 && last180 > last900) sendTelegramAlert(i, "Long Bullish Trend (180 vs 900)");
+      else if(prev180 > prev900 && last180 < last900) sendTelegramAlert(i, "Long Bearish Trend (180 vs 900)");
+
+      // Strong condition: 60 crosses both 180 & 900
+      let cross180 = (prev60 < prev180 && last60 > last180) || (prev60 > prev180 && last60 < last180);
+      let cross900 = (prev60 < prev900 && last60 > last900) || (prev60 > prev900 && last60 < last900);
+      if(cross180 && cross900) {
+        if(last60 > last180 && last60 > last900) sendTelegramAlert(i, "Strong Bullish Crossover (60 vs 180 & 900)");
+        else if(last60 < last180 && last60 < last900) sendTelegramAlert(i, "Strong Bearish Crossover (60 vs 180 & 900)");
+      }
+    }
+
+    // === MACD Logic ===
+    function EMA(values, period) {
+      let k = 2/(period+1), emaArray = [];
+      emaArray[0] = values[0];
+      for(let i=1;i<values.length;i++){
+        emaArray[i] = values[i]*k + emaArray[i-1]*(1-k);
+      }
+      return emaArray;
+    }
+
     async function checkMACD(i, symbol, tf="1m") {
       let closes = await fetchCandles(symbol, tf);
       if(closes.length < 30) return;
@@ -98,22 +129,6 @@
       let lastSignal = signalLine[signalLine.length-1], prevSignal = signalLine[signalLine.length-2];
       if(prevMacd < prevSignal && lastMacd > lastSignal) sendTelegramAlert(i, "MACD Bullish Crossover");
       else if(prevMacd > prevSignal && lastMacd < lastSignal) sendTelegramAlert(i, "MACD Bearish Crossover");
-    }
-
-    async function checkSMAAlerts(i, symbol, tf="1m") {
-      let closes = await fetchCandles(symbol, tf);
-      if(closes.length < 20) return; // ছোট ডেটা টেস্টের জন্য
-      let sma5  = SMA(closes, 5);
-      let sma15 = SMA(closes, 15);
-      let last5 = sma5[sma5.length-1], prev5 = sma5[sma5.length-2];
-      let last15 = sma15[sma15.length-1], prev15 = sma15[sma15.length-2];
-
-      if(prev5 < prev15 && last5 > last15) {
-        sendTelegramAlert(i, "SMA Bullish Crossover (5 vs 15)");
-      }
-      else if(prev5 > prev15 && last5 < last15) {
-        sendTelegramAlert(i, "SMA Bearish Crossover (5 vs 15)");
-      }
     }
 
     async function fetchCrypto(i, symbol, tf="1m") {
@@ -137,35 +152,4 @@
     }
 
     function loadSettings(i) {
-      let data = localStorage.getItem(`row${i}`);
-      if(data) {
-        let {sym, ind, tf} = JSON.parse(data);
-        document.getElementById(`sym${i}`).value = sym;
-        document.getElementById(`ind${i}`).value = ind;
-        document.getElementById(`tf${i}`).value  = tf;
-      }
-    }
-
-    let intervals = {};
-    function initRow(i) {
-      if(intervals[i]) clearInterval(intervals[i]);
-      let sym = document.getElementById(`sym${i}`).value.toUpperCase().trim();
-      let tf = document.getElementById(`tf${i}`).value;
-      let ind = document.getElementById(`ind${i}`).value;
-      intervals[i] = setInterval(() => {
-        fetchCrypto(i, sym, tf);
-        if(ind === "MACD") checkMACD(i, sym, tf);
-        else if(ind === "SMA Alerts") checkSMAAlerts(i, sym, tf);
-      }, 10000);
-    }
-
-    // Load saved settings on page load
-    window.onload = () => {
-      symbols.forEach((s, i) => {
-        loadSettings(i);
-        initRow(i);
-      });
-    };
-  </script>
-</body>
-</html>
+      let data
