@@ -64,6 +64,15 @@
       return data.map(c => parseFloat(c[4]));
     }
 
+    function EMA(values, period) {
+      let k = 2/(period+1), emaArray = [];
+      emaArray[0] = values[0];
+      for(let i=1;i<values.length;i++){
+        emaArray[i] = values[i]*k + emaArray[i-1]*(1-k);
+      }
+      return emaArray;
+    }
+
     function SMA(values, period) {
       let result = [];
       for(let i=0;i<values.length;i++){
@@ -75,46 +84,6 @@
         }
       }
       return result;
-    }
-
-    // === Indicator Logic ===
-    async function checkIndicatorLogic(i, symbol, tf="1m") {
-      let closes = await fetchCandles(symbol, tf);
-      if(closes.length < 900) return;
-
-      let sma60  = SMA(closes, 60);   // Blue line
-      let sma180 = SMA(closes, 180);  // Orange line
-      let sma900 = SMA(closes, 900);  // Purple line
-
-      let last60 = sma60[sma60.length-1], prev60 = sma60[sma60.length-2];
-      let last180 = sma180[sma180.length-1], prev180 = sma180[sma180.length-2];
-      let last900 = sma900[sma900.length-1], prev900 = sma900[sma900.length-2];
-
-      // 60 vs 180 crossover
-      if(prev60 < prev180 && last60 > last180) sendTelegramAlert(i, "SMA Bullish Crossover (60 vs 180)");
-      else if(prev60 > prev180 && last60 < last180) sendTelegramAlert(i, "SMA Bearish Crossover (60 vs 180)");
-
-      // 180 vs 900 crossover
-      if(prev180 < prev900 && last180 > last900) sendTelegramAlert(i, "Long Bullish Trend (180 vs 900)");
-      else if(prev180 > prev900 && last180 < last900) sendTelegramAlert(i, "Long Bearish Trend (180 vs 900)");
-
-      // Strong condition: 60 crosses both 180 & 900
-      let cross180 = (prev60 < prev180 && last60 > last180) || (prev60 > prev180 && last60 < last180);
-      let cross900 = (prev60 < prev900 && last60 > last900) || (prev60 > prev900 && last60 < last900);
-      if(cross180 && cross900) {
-        if(last60 > last180 && last60 > last900) sendTelegramAlert(i, "Strong Bullish Crossover (60 vs 180 & 900)");
-        else if(last60 < last180 && last60 < last900) sendTelegramAlert(i, "Strong Bearish Crossover (60 vs 180 & 900)");
-      }
-    }
-
-    // === MACD Logic ===
-    function EMA(values, period) {
-      let k = 2/(period+1), emaArray = [];
-      emaArray[0] = values[0];
-      for(let i=1;i<values.length;i++){
-        emaArray[i] = values[i]*k + emaArray[i-1]*(1-k);
-      }
-      return emaArray;
     }
 
     async function checkMACD(i, symbol, tf="1m") {
@@ -130,6 +99,31 @@
       else if(prevMacd > prevSignal && lastMacd < lastSignal) sendTelegramAlert(i, "MACD Bearish Crossover");
     }
 
+    async function checkSMAAlerts(i, symbol, tf="1m") {
+      let closes = await fetchCandles(symbol, tf);
+      if(closes.length < 900) return;
+      let sma60  = SMA(closes, 60);
+      let sma180 = SMA(closes, 180);
+      let sma900 = SMA(closes, 900);
+
+      let last60 = sma60[sma60.length-1], prev60 = sma60[sma60.length-2];
+      let last180 = sma180[sma180.length-1], prev180 = sma180[sma180.length-2];
+      let last900 = sma900[sma900.length-1], prev900 = sma900[sma900.length-2];
+
+      if(prev60 < prev180 && last60 > last180) sendTelegramAlert(i, "SMA Bullish Crossover (60 vs 180)");
+      else if(prev60 > prev180 && last60 < last180) sendTelegramAlert(i, "SMA Bearish Crossover (60 vs 180)");
+
+      if(prev180 < prev900 && last180 > last900) sendTelegramAlert(i, "Long Bullish Trend (180 vs 900)");
+      else if(prev180 > prev900 && last180 < last900) sendTelegramAlert(i, "Long Bearish Trend (180 vs 900)");
+
+      let cross180 = (prev60 < prev180 && last60 > last180) || (prev60 > prev180 && last60 < last180);
+      let cross900 = (prev60 < prev900 && last60 > last900) || (prev60 > prev900 && last60 < last900);
+      if(cross180 && cross900) {
+        if(last60 > last180 && last60 > last900) sendTelegramAlert(i, "Strong Bullish Crossover (60 vs 180 & 900)");
+        else if(last60 < last180 && last60 < last900) sendTelegramAlert(i, "Strong Bearish Crossover (60 vs 180 & 900)");
+      }
+    }
+
     async function fetchCrypto(i, symbol, tf="1m") {
       try {
         const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
@@ -142,13 +136,24 @@
       }
     }
 
-     // Load saved settings on page load
-    window.onload = () => {
-      symbols.forEach((s, i) => {
-        loadSettings(i);
-        initRow(i);
-      });
-    };
-  </script>
-</body>
-</html>
+    function saveSettings(i) {
+      let sym = document.getElementById(`sym${i}`).value;
+      let ind = document.getElementById(`ind${i}`).value;
+      let tf  = document.getElementById(`tf${i}`).value;
+      localStorage.setItem(`row${i}`, JSON.stringify({sym, ind, tf}));
+    }
+
+    function loadSettings(i) {
+      let data = localStorage.getItem(`row${i}`);
+      if(data) {
+        let {sym, ind, tf} = JSON.parse(data);
+        document.getElementById(`sym${i}`).value = sym;
+        document.getElementById(`ind${i}`).value = ind;
+        document.getElementById(`tf${i}`).value  = tf;
+      }
+    }
+
+    let intervals = {};
+    function initRow(i) {
+      if(intervals[i]) clearInterval(intervals[i]);
+      let sym = document.getElementById(`sym${i}`).value.toUpperCase().
