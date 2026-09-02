@@ -149,9 +149,9 @@ table td, table th {
   let last180 = sma180[sma180.length-1], prev180 = sma180[sma180.length-2];
   let last900 = sma900[sma900.length-1], prev900 = sma900[sma900.length-2];
 
-  // 5 vs 180 crossover
-  if(prev5 < prev180 && last5 > last180) sendTelegramAlert(i, "SMA Bullish Crossover (5 vs 180)");
-  else if(prev5 > prev180 && last5 < last180) sendTelegramAlert(i, "SMA Bearish Crossover (5 vs 180)");
+  // 5 vs 60 crossover
+  if(prev5 < prev60 && last5 > last60) sendTelegramAlert(i, "SMA Bullish Crossover (5 vs 60)");
+  else if(prev5 > prev60 && last5 < last60) sendTelegramAlert(i, "SMA Bearish Crossover (5 vs 60)");
 
   // 60 vs 180 crossover
   if(prev60 < prev180 && last60 > last180) sendTelegramAlert(i, "SMA Bullish Crossover (60 vs 180)");
