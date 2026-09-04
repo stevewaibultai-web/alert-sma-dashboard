@@ -78,28 +78,33 @@
     }
 
     async function fetchCandles(symbol, tf="1m") {
-      const res = await fetch("https://api.sharkexchange.com/v1/market/klines", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ pair:symbol, interval:tf, priceType:"MARK_PRICE", limit:100 })
-      });
-      const data = await res.json();
-      return data.map(c=>parseFloat(c.close));
-    }
+  const res = await fetch("https://shark.ai/api/v1/market/klines", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer sk-your-api-key" // replace with your key
+    },
+    body: JSON.stringify({ pair:symbol, interval:tf, priceType:"MARK_PRICE", limit:100 })
+  });
+  const data = await res.json();
+  return data.map(c=>parseFloat(c.close));
+}
 
-    async function fetchCrypto(i, symbol, tf="1m") {
-      try {
-        const res = await fetch(`https://api.sharkexchange.com/v1/market/ticker/price?pair=${symbol}`);
-        const data = await res.json();
-        if(data.price) {
-          document.getElementById(`price${i}`).innerText = `$ ${parseFloat(data.price).toLocaleString()}`;
-        } else {
-          document.getElementById(`price${i}`).innerText = "Error";
-        }
-      } catch(e) {
-        document.getElementById(`price${i}`).innerText = "Error";
-      }
+async function fetchCrypto(i, symbol) {
+  try {
+    const res = await fetch(`https://shark.ai/api/v1/market/ticker/price?pair=${symbol}`, {
+      headers:{ "Authorization":"Bearer sk-your-api-key" }
+    });
+    const data = await res.json();
+    if(data.price) {
+      document.getElementById(`price${i}`).innerText = `$ ${parseFloat(data.price).toLocaleString()}`;
+    } else {
+      document.getElementById(`price${i}`).innerText = "Error";
     }
+  } catch(e) {
+    document.getElementById(`price${i}`).innerText = "Error";
+  }
+}
 
     // EMA, SMA, MACD, SMA Alerts functions same as before...
 
