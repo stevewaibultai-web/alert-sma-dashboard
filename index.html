@@ -8,23 +8,6 @@
     input, select { background-color:#1e2a3a; color:#fff; border:1px solid #3a4a5a; padding:4px; }
     button { background-color:#1e2a3a; color:#fff; border:1px solid #3a4a5a; padding:6px 12px; cursor:pointer; }
     button:hover { background-color:#2c3b4d; }
-    table {Got it Zero ✅ — এবার আমি তোমার ড্যাশবোর্ডকে শুধু **Shark Exchange** এর data টানার মতো করে সাজিয়ে দিলাম। Binance বাদ দিয়ে শুধুমাত্র Shark API ব্যবহার করা হবে, যাতে তুমি টেস্ট করতে পারো আসলেই data আসছে কিনা।  
-
----
-
-## 🔧 Final Script (Shark Exchange Only)
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Shark Exchange Dashboard</title>
-  <style>
-    body { background:#0b1426; color:#fff; font-family:Segoe UI; text-align:center; padding:20px; }
-    input, select { background-color:#1e2a3a; color:#fff; border:1px solid #3a4a5a; padding:4px; }
-    button { background-color:#1e2a3a; color:#fff; border:1px solid #3a4a5a; padding:6px 12px; cursor:pointer; }
-    button:hover { background-color:#2c3b4d; }
     table { border-collapse:collapse; width:100%; }
     table td, table th { border:1px solid #3a4a5a; padding:6px; }
   </style>
@@ -65,6 +48,9 @@
     const BOT_TOKEN = "8910250156:AAFXETIQy7ILusg--h5FE1PKg-dLFgS7hpg"; 
     const CHAT_ID = "7287275405";
 
+    // Shark Exchange API key (replace with your real key)
+    const SHARK_API_KEY = "sk-your-api-key";
+
     function sendTelegramAlert(i, msg="Alert") {
       let sym = document.getElementById(`sym${i}`).value;
       let timeframe = document.getElementById(`tf${i}`).value;
@@ -78,33 +64,33 @@
     }
 
     async function fetchCandles(symbol, tf="1m") {
-  const res = await fetch("https://shark.ai/api/v1/market/klines", {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":"Bearer sk-your-api-key" // replace with your key
-    },
-    body: JSON.stringify({ pair:symbol, interval:tf, priceType:"MARK_PRICE", limit:100 })
-  });
-  const data = await res.json();
-  return data.map(c=>parseFloat(c.close));
-}
-
-async function fetchCrypto(i, symbol) {
-  try {
-    const res = await fetch(`https://shark.ai/api/v1/market/ticker/price?pair=${symbol}`, {
-      headers:{ "Authorization":"Bearer sk-your-api-key" }
-    });
-    const data = await res.json();
-    if(data.price) {
-      document.getElementById(`price${i}`).innerText = `$ ${parseFloat(data.price).toLocaleString()}`;
-    } else {
-      document.getElementById(`price${i}`).innerText = "Error";
+      const res = await fetch("https://shark.ai/api/v1/market/klines", {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":"Bearer "+SHARK_API_KEY
+        },
+        body: JSON.stringify({ pair:symbol, interval:tf, priceType:"MARK_PRICE", limit:100 })
+      });
+      const data = await res.json();
+      return data.map(c=>parseFloat(c.close));
     }
-  } catch(e) {
-    document.getElementById(`price${i}`).innerText = "Error";
-  }
-}
+
+    async function fetchCrypto(i, symbol) {
+      try {
+        const res = await fetch(`https://shark.ai/api/v1/market/ticker/price?pair=${symbol}`, {
+          headers:{ "Authorization":"Bearer "+SHARK_API_KEY }
+        });
+        const data = await res.json();
+        if(data.price) {
+          document.getElementById(`price${i}`).innerText = `$ ${parseFloat(data.price).toLocaleString()}`;
+        } else {
+          document.getElementById(`price${i}`).innerText = "Error";
+        }
+      } catch(e) {
+        document.getElementById(`price${i}`).innerText = "Error";
+      }
+    }
 
     // EMA, SMA, MACD, SMA Alerts functions same as before...
 
@@ -131,7 +117,7 @@ async function fetchCrypto(i, symbol) {
       let tf=document.getElementById(`tf${i}`).value;
       let ind=document.getElementById(`ind${i}`).value;
       intervals[i]=setInterval(()=>{
-        fetchCrypto(i,sym,tf);
+        fetchCrypto(i,sym);
         if(ind==="MACD") checkMACD(i,sym,tf);
         else if(ind==="SMA Alerts") checkSMAAlerts(i,sym,tf);
       },10000);
