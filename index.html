@@ -135,39 +135,38 @@ table td, table th {
 
     async function checkSMAAlerts(i, symbol, tf="1m") {
   let closes = await fetchCandles(symbol, tf);
-  if(closes.length < 900) return;
+  if(closes.length < 180) return;
 
   let sma5   = SMA(closes, 5);   // Short line
-  let sma60  = SMA(closes, 60);  // Blue line
-  let sma180 = SMA(closes, 180); // Orange line
-  let sma900 = SMA(closes, 900); // Purple line
+  let sma30  = SMA(closes, 30);  // Blue line
+  let sma60 = SMA(closes, 60); // Orange line
+  let sma180 = SMA(closes, 180); // Purple line
 
   let last5 = sma5[sma5.length-1], prev5 = sma5[sma5.length-2];
+  let last30 = sma30[sma30.length-1], prev30 = sma30[sma30.length-2];
   let last60 = sma60[sma60.length-1], prev60 = sma60[sma60.length-2];
   let last180 = sma180[sma180.length-1], prev180 = sma180[sma180.length-2];
-  let last900 = sma900[sma900.length-1], prev900 = sma900[sma900.length-2];
 
-  // 5 vs 60 crossover
-  if(prev5 < prev60 && last5 > last60) sendTelegramAlert(i, "SMA Bullish Crossover (5 vs 60)");
-  else if(prev5 > prev60 && last5 < last60) sendTelegramAlert(i, "SMA Bearish Crossover (5 vs 60)");
+  // 5 vs 30 crossover
+  if(prev5 < prev30 && last5 > last30) sendTelegramAlert(i, "SMA Bullish Crossover (5 vs 30)");
+  else if(prev5 > prev30 && last5 < last30) sendTelegramAlert(i, "SMA Bearish Crossover (5 vs 30)");
+
+  // 30 vs 60 crossover
+  if(prev30 < prev60 && last30 > last60) sendTelegramAlert(i, "SMA Bullish Crossover (30 vs 60)");
+  else if(prev30 > prev60 && last30 < last60) sendTelegramAlert(i, "SMA Bearish Crossover (30 vs 60)");
 
   // 60 vs 180 crossover
-  if(prev60 < prev180 && last60 > last180) sendTelegramAlert(i, "SMA Bullish Crossover (60 vs 180)");
-  else if(prev60 > prev180 && last60 < last180) sendTelegramAlert(i, "SMA Bearish Crossover (60 vs 180)");
+  if(prev60 < prev180 && last60 > last180) sendTelegramAlert(i, "Long Bullish Trend (60 vs 180)");
+  else if(prev60 > prev180 && last60 < last180) sendTelegramAlert(i, "Long Bearish Trend (60 vs 180)");
 
-  // 180 vs 900 crossover
-  if(prev180 < prev900 && last180 > last900) sendTelegramAlert(i, "Long Bullish Trend (180 vs 900)");
-  else if(prev180 > prev900 && last180 < last900) sendTelegramAlert(i, "Long Bearish Trend (180 vs 900)");
-
-  // Strong condition: 60 crosses both 180 & 900
-  let cross180 = (prev60 < prev180 && last60 > last180) || (prev60 > prev180 && last60 < last180);
-  let cross900 = (prev60 < prev900 && last60 > last900) || (prev60 > prev900 && last60 < last900);
-  if(cross180 && cross900) {
-    if(last60 > last180 && last60 > last900) sendTelegramAlert(i, "Strong Bullish Crossover (60 vs 180 & 900)");
-    else if(last60 < last180 && last60 < last900) sendTelegramAlert(i, "Strong Bearish Crossover (60 vs 180 & 900)");
+  // Strong condition: 30 crosses both 60 & 180
+  let cross60 = (prev30 < prev60 && last30 > last60) || (prev30 > prev60 && last30 < last60);
+  let cross180 = (prev30 < prev180 && last30 > last180) || (prev30 > prev180 && last30 < last180);
+  if(cross60 && cross180) {
+    if(last30 > last60 && last30 > last180) sendTelegramAlert(i, "Strong Bullish Crossover (30 vs 60 & 180)");
+    else if(last30 < last60 && last30 < last180) sendTelegramAlert(i, "Strong Bearish Crossover (30 vs 60 & 180)");
   }
     }
-
     async function fetchCrypto(i, symbol, tf="1m") {
       try {
         const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
